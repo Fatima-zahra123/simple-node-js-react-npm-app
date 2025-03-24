@@ -1,0 +1,66 @@
+pipeline {
+    agent any
+
+    environment {
+        ARTIFACTS_DIR = "/var/jenkins_home/artifacts"
+    }
+
+    stages {
+        stage('Check Environment') {
+            steps {
+                script {
+                    sh 'echo "📍 Répertoire actuel : $(pwd)"'
+                    sh 'ls -l || echo "⚠️ Impossible de lister le contenu"'
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    if (fileExists('package.json')) {
+                        echo "🚀 Détection d'un projet Node.js, lancement de la build..."
+                        sh 'npm install'
+                        sh 'npm run build'
+                        env.BUILD_DIR = 'build'   // ✅ Correction ici
+                    } else if (fileExists('pom.xml')) {
+                        echo "🚀 Détection d'un projet Maven (Spring Boot), lancement de la build..."
+                        sh 'mvn clean package'
+                        env.BUILD_DIR = 'target'
+                    } else {
+                        error "❌ Aucune build détectée (ni package.json, ni pom.xml)."
+                    }
+                }
+            }
+        }
+
+        stage('Verify Build Output') {
+            steps {
+                script {
+                    if (!fileExists(env.BUILD_DIR) || sh(script: "ls -A ${env.BUILD_DIR} | wc -l", returnStdout: true).trim() == "0") {
+                        error "❌ Aucun fichier généré dans ${env.BUILD_DIR}. Vérifiez votre build."
+                    }
+                }
+            }
+        }
+
+        stage('Copy Artifacts') {
+            steps {
+                script {
+                    sh "mkdir -p ${ARTIFACTS_DIR}"
+                    sh "cp -r ${env.BUILD_DIR}/* ${ARTIFACTS_DIR}/"
+                    echo "✅ Copie terminée avec succès !"
+                }
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo "❌ Échec du pipeline, vérifiez les logs."
+        }
+        success {
+            echo "🎉 Pipeline terminé avec succès !"
+        }
+    }
+}
