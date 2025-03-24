@@ -21,7 +21,7 @@ pipeline {
 
     post {
         success {
-            echo "✅ Artefact stocké dans /var/jenkins_home/artifacts/"
+            echo "✅ Artefacts stocké dans /var/jenkins_home/artifacts/"
         }
         failure {
             echo "❌ Échec du pipeline"
